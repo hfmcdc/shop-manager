@@ -1,5 +1,6 @@
 import { db, inr } from "@/lib/db";
 import { BASE_UNITS } from "@/lib/units";
+import BarcodeInput from "./BarcodeInput";
 import { saveProduct, deleteProduct } from "../actions";
 export const dynamic = "force-dynamic";
 export default async function Products({ searchParams }: { searchParams: { edit?: string; error?: string; q?: string } }) {
@@ -12,7 +13,7 @@ export default async function Products({ searchParams }: { searchParams: { edit?
     <form action={saveProduct} key={edit?.id ?? "new"} className="grid gap-2 rounded-lg border bg-white p-3 sm:grid-cols-6">
       <input type="hidden" name="id" defaultValue={edit?.id} />
       <input name="name" required placeholder="Product name" defaultValue={edit?.name} className={inp + " sm:col-span-2"} />
-      <input name="barcode" placeholder="Barcode (optional)" defaultValue={edit?.barcode ?? ""} className={inp} />
+      <BarcodeInput defaultValue={edit?.barcode ?? ""} className={inp} />
       <input name="price" required type="number" step="0.01" min="0" placeholder="Price per unit ₹" defaultValue={edit?.price} className={inp} />
       <select name="unit" defaultValue={edit?.unit ?? "pcs"} className={inp}>{BASE_UNITS.map((u) => <option key={u}>{u}</option>)}</select>
       {!edit && <input name="stock" type="number" step="0.001" min="0" placeholder="Opening stock" className={inp} />}
