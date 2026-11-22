@@ -46,3 +46,10 @@ export async function createBillAction(p: Payload): Promise<{ id?: string; error
   if (error) return { error: error.message };
   revalidatePath("/"); return { id: (data as { id: string }).id };
 }
+
+export async function findProductByBarcode(code: string) {
+  const c = String(code ?? "").trim();
+  if (!c) return null;
+  const { data } = await db().from("products").select("id,name,barcode,price,unit,stock").eq("is_active", true).eq("barcode", c).maybeSingle();
+  return data ? { ...data, price: Number(data.price), stock: Number(data.stock) } : null;
+}
