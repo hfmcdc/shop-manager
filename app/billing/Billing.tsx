@@ -11,6 +11,7 @@ export default function Billing({ products }: { products: P[] }) {
   const [method, setMethod] = useState<"cash" | "upi" | "credit">("cash"); const [paid, setPaid] = useState("");
   const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(() => crypto.randomUUID()); const [cam, setCam] = useState(false); const vid = useRef<HTMLVideoElement>(null);
+  useEffect(() => { r.refresh(); }, []); // always load the latest products & stock
   const add = (p: P) => { setLines((ls) => ls.find((l) => l.p.id === p.id) ? ls.map((l) => l.p.id === p.id ? { ...l, qty: String(Number(l.qty) + 1) } : l) : [...ls, { p, qty: "1", unit: p.unit }]); setQ(""); };
   const norm = (c: string) => c.trim().replace(/^0+/, "");
   const byCode = (c: string) => { const p = products.find((x) => x.barcode && norm(x.barcode) === norm(c)); if (p) { add(p); setMsg(""); return true; } return false; };
