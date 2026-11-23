@@ -53,3 +53,32 @@ export async function findProductByBarcode(code: string) {
   const { data } = await db().from("products").select("id,name,barcode,price,unit,stock").eq("is_active", true).eq("barcode", c).maybeSingle();
   return data ? { ...data, price: Number(data.price), stock: Number(data.stock) } : null;
 }
+
+export async function searchProducts(q: string): Promise<{ items: any[]; error?: string }> {
+  const s = String(q ?? "").trim().replace(/[%,()*]/g, "");
+  if (!s) return { items: [] };
+  const { data, error } = await db().from("products").select("id,name,barcode,price,unit,stock").eq("is_active", true).or(`name.ilike.%${s}%,barcode.eq.${s}`).order("name").limit(8);
+  return { items: (data ?? []).map((p) => ({ ...p, price: Number(p.price), stock: Number(p.stock) })), error: error?.message };
+}
+
+export async function listProducts() {
+  const { data, error } = await db().from("products").select("id,name,barcode,price,unit,stock").eq("is_active", true).order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((p) => ({ ...p, price: Number(p.price), stock: Number(p.stock) }));
+}
+
+export async function restockAction(p: { key: string; product_id: string; qty: number; unit: string; note: string }): Promise<{ stock?: number; error?: string }> {
+  if (!p.key || p.key.length < 16) return { error: "Invalid request" };
+  if (!(p.qty > 0)) return { error: "Quantity must be above 0" };
+  const { data, error } = await db().rpc("restock_product", { p_key: p.key, p_product: p.product_id, p_qty: p.qty, p_unit: p.unit, p_note: p.note?.trim() || null });
+  if (error) return { error: error.message };
+  revalidatePath("/restock"); revalidatePath("/products"); return { stock: Number((data as { stock: number }).stock) };
+}
+
+export async function collectPaymentAction(p: { key: string; customer_id: string; amount: number; method: "cash" | "upi" }): Promise<{ error?: string }> {
+  if (!p.key || p.key.length < 16) return { error: "Invalid request" };
+  if (!(p.amount > 0)) return { error: "Enter an amount above 0" };
+  const { error } = await db().rpc("collect_payment", { p_key: p.key, p_customer: p.customer_id, p_amount: p.amount, p_method: p.method });
+  if (error) return { error: error.message };
+  revalidatePath("/credit"); revalidatePath("/"); return {};
+}
