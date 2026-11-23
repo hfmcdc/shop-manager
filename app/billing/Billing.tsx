@@ -33,25 +33,35 @@ export default function Billing({ products, edit }: { products: P[]; edit?: Edit
     const res = await createBillAction({ edit_id: edit?.id, key, method, paid: Number(paid) || 0, name, phone, items: lines.map((l) => ({ product_id: l.p.id, qty: Number(l.qty), unit: l.unit })) });
     setBusy(false); if (res.error) return setMsg(res.error); setKey(crypto.randomUUID()); r.push(`/bills/${res.id}`);
   }
-  const inp = "rounded border p-2 text-sm";
-  return (<div className="space-y-3">
-    {edit && <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">Editing bill {edit.no}. Saving cancels it, restores its stock and creates a corrected bill.</p>}
-    <div className="flex gap-2"><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void byCode(q); } }} placeholder="Search product or scan barcode" className={inp + " flex-1"} />
-      <button onClick={() => "BarcodeDetector" in window ? (setMsg(""), setCam(true)) : setMsg("Camera scanning isn't supported in this browser. Use a Bluetooth/USB scanner or type the barcode.")} className="rounded border bg-white px-3 text-sm">Scan</button></div>
-    {cam && <div className="space-y-1"><video ref={vid} className="w-full max-w-sm rounded" muted playsInline /><p className="text-xs text-slate-500">Scanning… hold the barcode steady, about 15–20 cm away, in good light.</p>{msg && <p className="rounded bg-red-50 p-2 text-sm text-red-700">{msg}</p>}<button onClick={() => setCam(false)} className="text-sm text-red-600">Close camera</button></div>}
-    {found.length > 0 && <ul className="divide-y rounded border bg-white">{found.map((p) => <li key={p.id}><button onClick={() => add(p)} className="flex w-full justify-between p-2 text-left text-sm"><span>{p.name}</span><span className="text-slate-500">{p.stock} {p.unit} in stock</span></button></li>)}</ul>}
-    {q.trim() && found.length === 0 && <p className="text-sm text-slate-500">No product found for this search.</p>}
-    <ul className="divide-y rounded-lg border bg-white">{lines.length ? lines.map((l) => (<li key={l.p.id} className="flex flex-wrap items-center gap-2 p-2 text-sm">
-      <span className="mr-auto min-w-[8rem]">{l.p.name}</span>
-      <input value={l.qty} inputMode="decimal" onChange={(e) => setLines(lines.map((x) => x.p.id === l.p.id ? { ...x, qty: e.target.value } : x))} className={inp + " w-20"} />
-      <select value={l.unit} onChange={(e) => setLines(lines.map((x) => x.p.id === l.p.id ? { ...x, unit: e.target.value } : x))} className={inp}>{GROUP[l.p.unit].map((u) => <option key={u}>{u}</option>)}</select>
-      <span className="w-24 text-right font-medium">₹{lineTotal(l).toFixed(2)}</span>
-      <button onClick={() => setLines(lines.filter((x) => x.p.id !== l.p.id))} className="text-red-600">Remove</button></li>))
-      : <li className="p-3 text-sm text-slate-500">Search or scan a product to start the bill.</li>}</ul>
-    <div className="flex gap-2">{(["cash", "upi", "credit"] as const).map((m) => <button key={m} onClick={() => setMethod(m)} className={`flex-1 rounded border p-2 text-sm font-medium ${method === m ? "bg-brand text-white" : "bg-white"}`}>{m === "upi" ? "UPI" : m[0].toUpperCase() + m.slice(1)}</button>)}</div>
-    <div className="grid gap-2 sm:grid-cols-3"><input value={name} onChange={(e) => setName(e.target.value)} placeholder={method === "credit" ? "Customer name (required)" : "Customer name (optional)"} className={inp} />
-      <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Customer phone" className={inp} />
-      {method === "credit" && <input value={paid} inputMode="decimal" onChange={(e) => setPaid(e.target.value)} placeholder="Paid now ₹ (optional)" className={inp} />}</div>
-    {msg && !cam && <p className="rounded bg-red-50 p-2 text-sm text-red-700">{msg}</p>}
-    <button disabled={busy} onClick={submit} className="w-full rounded bg-brand p-3 font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : `Complete bill · ₹${total.toFixed(2)}`}</button></div>);
+  const inp = "rounded-xl border p-3 text-base";
+  const setQty = (id: string, v: string) => setLines((ls) => ls.map((x) => (x.p.id === id ? { ...x, qty: v } : x)));
+  const bump = (id: string, d: number) => setLines((ls) => ls.flatMap((x) => { if (x.p.id !== id) return [x]; const n = Math.round((Number(x.qty) + d) * 1000) / 1000; return n > 0 ? [{ ...x, qty: String(n) }] : []; }));
+  const count = lines.length; const pm = { cash: "bg-emerald-600", upi: "bg-violet-600", credit: "bg-amber-600" };
+  return (<div className="space-y-4 pb-32">
+    {edit && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Editing bill {edit.no}. Saving cancels it, restores its stock and creates a corrected bill.</p>}
+    <div className="space-y-2 rounded-2xl border bg-white p-3">
+      <div className="flex gap-2"><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void byCode(q); } }} placeholder="🔍 Search product or scan barcode" className={inp + " min-w-0 flex-1"} />
+        <button onClick={() => "BarcodeDetector" in window ? (setMsg(""), setCam(true)) : setMsg("Camera scanning isn't supported in this browser. Use Chrome on Android, or a Bluetooth/USB scanner.")} className="rounded-xl bg-teal-600 px-5 font-semibold text-white">Scan</button></div>
+      {cam && <div className="space-y-1"><video ref={vid} className="w-full max-w-sm rounded-xl" muted playsInline /><p className="text-xs text-slate-500">Scanning… hold the barcode steady, 15–20 cm away, in good light.</p>{msg && <p className="rounded-xl bg-red-50 p-2 text-sm text-red-700">{msg}</p>}<button onClick={() => setCam(false)} className="text-sm text-red-400">Close camera</button></div>}
+      {found.length > 0 && <ul className="space-y-1">{found.map((p) => <li key={p.id} className="pop"><button onClick={() => add(p)} className="flex w-full items-center justify-between gap-2 rounded-xl bg-[var(--surface2)] p-3 text-left"><span className="font-medium">{p.name}</span><span className="text-right text-sm"><b className="text-emerald-400">₹{p.price}</b> / {p.unit}<br /><span className="text-xs text-slate-500">{p.stock} {p.unit} in stock</span></span></button></li>)}</ul>}
+      {q.trim() && found.length === 0 && <p className="text-sm text-slate-500">No product found for this search.</p>}</div>
+    <div className="space-y-2">{count ? lines.map((l) => (<div key={l.p.id} className="pop rounded-2xl border bg-white p-3">
+      <div className="flex items-start justify-between gap-2"><div><div className="font-semibold">{l.p.name}</div><div className="text-xs text-slate-500">₹{l.p.price} per {l.p.unit}</div></div>
+        <button onClick={() => setLines(lines.filter((x) => x.p.id !== l.p.id))} aria-label="Remove" className="rounded-lg px-2 text-2xl leading-none text-red-400">×</button></div>
+      <div className="mt-2 flex items-center gap-2">
+        <button onClick={() => bump(l.p.id, -1)} className="h-11 w-11 rounded-xl bg-[var(--surface2)] text-2xl">−</button>
+        <input value={l.qty} inputMode="decimal" onChange={(e) => setQty(l.p.id, e.target.value)} className="h-11 w-20 rounded-xl border text-center text-lg font-semibold" />
+        <button onClick={() => bump(l.p.id, 1)} className="h-11 w-11 rounded-xl bg-teal-600 text-2xl text-white">+</button>
+        <select value={l.unit} onChange={(e) => setLines(lines.map((x) => x.p.id === l.p.id ? { ...x, unit: e.target.value } : x))} className="h-11 rounded-xl border px-2">{GROUP[l.p.unit].map((u) => <option key={u}>{u}</option>)}</select>
+        <span className="ml-auto text-xl font-bold text-emerald-400">₹{lineTotal(l).toFixed(2)}</span></div></div>))
+      : <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500"><div className="text-4xl">🛒</div>Search or scan a product to start the bill</div>}</div>
+    <div className="space-y-3 rounded-2xl border bg-white p-3"><div className="grid grid-cols-3 gap-2">{(["cash", "upi", "credit"] as const).map((m) => <button key={m} onClick={() => setMethod(m)} className={`rounded-xl p-3 font-semibold ${method === m ? pm[m] + " text-white shadow-lg" : "bg-[var(--surface2)] text-slate-400"}`}>{m === "upi" ? "UPI" : m[0].toUpperCase() + m.slice(1)}</button>)}</div>
+      <div className="grid gap-2 sm:grid-cols-3"><input value={name} onChange={(e) => setName(e.target.value)} placeholder={method === "credit" ? "Customer name (required)" : "Customer name (optional)"} className={inp} />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="Customer phone" className={inp} />
+        {method === "credit" && <input value={paid} inputMode="decimal" onChange={(e) => setPaid(e.target.value)} placeholder="Paid now ₹ (optional)" className={inp} />}</div></div>
+    {msg && !cam && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{msg}</p>}
+    <div className="fixed inset-x-0 bottom-14 z-20 border-t bg-[#0d1426]/95 p-3 backdrop-blur md:bottom-0"><div className="mx-auto flex max-w-5xl items-center gap-3">
+      <div className="mr-auto"><div className="text-xs uppercase tracking-wide text-slate-500">{count} item{count === 1 ? "" : "s"} · Total</div><span key={total} className="bump text-3xl font-extrabold text-emerald-400">₹{total.toFixed(2)}</span></div>
+      <button disabled={busy || !count} onClick={submit} className="rounded-2xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white shadow-lg disabled:opacity-40">{busy ? "Saving…" : "Complete bill"}</button></div></div>
+  </div>);
 }

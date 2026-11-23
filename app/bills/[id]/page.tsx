@@ -23,7 +23,7 @@ export default async function Receipt({ params, searchParams }: { params: { id: 
       <Link href={`?w=${w === 80 ? 58 : 80}`} className="rounded border bg-white px-3 py-2">{w === 80 ? "58" : "80"}mm</Link><Link href="/billing" className="rounded border bg-white px-3 py-2">New bill</Link></div>
     <p className="text-xs text-slate-500 print:hidden">WhatsApp sends the receipt as a text message{to ? " to the customer's number" : " (you choose the contact)"}. Printing uses your browser/OS print dialog; direct Bluetooth ESC/POS printing is not built in.</p>
     {cancelled && <p className="rounded bg-red-50 p-2 text-sm text-red-700 print:hidden">Cancelled{b.cancel_reason ? `: ${b.cancel_reason}` : ""}. Stock was restored.</p>}
-    <div style={{ width: `${w}mm` }} className="mx-auto bg-white p-2 font-mono text-[11px] leading-tight print:p-0">
+    <div style={{ width: `${w}mm` }} className="receipt mx-auto bg-white p-2 font-mono text-[11px] leading-tight print:p-0">
       <div className="text-center"><b className="text-sm">{shop?.name}</b><div>{shop?.address}</div><div>Ph: {shop?.phone}</div></div><hr className="my-1 border-dashed" />
       <div>Bill: {b.bill_no}{cancelled ? " (CANCELLED)" : ""}</div><div>{date}</div>
       {b.customers && <div>Customer: {b.customers.name} {b.customers.phone ?? ""}</div>}<hr className="my-1 border-dashed" />

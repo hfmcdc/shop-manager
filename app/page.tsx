@@ -31,5 +31,5 @@ export default async function Dashboard() {
   </div>);
 }
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg border bg-white p-3"><div className="text-xs text-slate-500">{label}</div><div className="text-xl font-semibold text-brand">{value}</div></div>;
+  return <div className="pop rounded-2xl border bg-white p-4"><div className="text-xs uppercase tracking-wide text-slate-500">{label}</div><div className="mt-1 text-3xl font-extrabold text-emerald-400">{value}</div></div>;
 }
