@@ -1,22 +1,26 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBillAction, findProductByBarcode } from "../actions";
+import { createBillAction, findProductByBarcode, searchProducts } from "../actions";
 import { F, GROUP } from "@/lib/units";
 type P = { id: string; name: string; barcode: string | null; price: number; unit: string; stock: number };
 type L = { p: P; qty: string; unit: string };
 const lineTotal = (l: L) => Math.round((Number(l.qty) || 0) * (F[l.unit] / F[l.p.unit]) * l.p.price * 100) / 100;
-export default function Billing({ products }: { products: P[] }) {
-  const r = useRouter(); const [q, setQ] = useState(""); const [lines, setLines] = useState<L[]>([]);
-  const [method, setMethod] = useState<"cash" | "upi" | "credit">("cash"); const [paid, setPaid] = useState("");
-  const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+type Edit = { id: string; no: string; method: "cash" | "upi" | "credit"; paid: string; name: string; phone: string; lines: L[] };
+export default function Billing({ products, edit }: { products: P[]; edit?: Edit }) {
+  const r = useRouter(); const [q, setQ] = useState(""); const [lines, setLines] = useState<L[]>(edit?.lines ?? []);
+  const [method, setMethod] = useState<"cash" | "upi" | "credit">(edit?.method ?? "cash"); const [paid, setPaid] = useState(edit?.paid ?? "");
+  const [name, setName] = useState(edit?.name ?? ""); const [phone, setPhone] = useState(edit?.phone ?? ""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(() => crypto.randomUUID()); const [cam, setCam] = useState(false); const vid = useRef<HTMLVideoElement>(null);
   useEffect(() => { r.refresh(); }, []); // always load the latest products & stock
   const add = (p: P) => { setLines((ls) => ls.find((l) => l.p.id === p.id) ? ls.map((l) => l.p.id === p.id ? { ...l, qty: String(Number(l.qty) + 1) } : l) : [...ls, { p, qty: "1", unit: p.unit }]); setQ(""); };
   const norm = (c: string) => c.trim().replace(/^0+/, "");
   const byCode = async (c: string) => { let p: P | undefined = products.find((x) => x.barcode && norm(x.barcode) === norm(c)); if (!p) p = (await findProductByBarcode(c)) ?? undefined; if (p) { add(p); setMsg(""); return true; } return false; };
   const total = Math.round(lines.reduce((a, l) => a + lineTotal(l) * 100, 0)) / 100;
-  const found = q ? products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || p.barcode === q).slice(0, 8) : [];
+  const [found, setFound] = useState<P[]>([]);
+  useEffect(() => { const s = q.trim(); if (!s) { setFound([]); return; } let off = false;
+    const h = setTimeout(async () => { const res = await searchProducts(s); if (off) return; setFound(res.items as P[]); if (res.error) setMsg("Search failed: " + res.error); }, 200);
+    return () => { off = true; clearTimeout(h); }; }, [q]);
   useEffect(() => { if (!cam) return; let stop = false; let st: MediaStream;
     const BD = (window as any).BarcodeDetector; const det = new BD();
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(async (s) => { st = s; if (vid.current) { vid.current.srcObject = s; await vid.current.play(); }
@@ -26,15 +30,17 @@ export default function Billing({ products }: { products: P[] }) {
   async function submit() {
     setMsg(""); if (!lines.length) return setMsg("Add at least one product.");
     setBusy(true);
-    const res = await createBillAction({ key, method, paid: Number(paid) || 0, name, phone, items: lines.map((l) => ({ product_id: l.p.id, qty: Number(l.qty), unit: l.unit })) });
+    const res = await createBillAction({ edit_id: edit?.id, key, method, paid: Number(paid) || 0, name, phone, items: lines.map((l) => ({ product_id: l.p.id, qty: Number(l.qty), unit: l.unit })) });
     setBusy(false); if (res.error) return setMsg(res.error); setKey(crypto.randomUUID()); r.push(`/bills/${res.id}`);
   }
   const inp = "rounded border p-2 text-sm";
   return (<div className="space-y-3">
+    {edit && <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">Editing bill {edit.no}. Saving cancels it, restores its stock and creates a corrected bill.</p>}
     <div className="flex gap-2"><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void byCode(q); } }} placeholder="Search product or scan barcode" className={inp + " flex-1"} />
       <button onClick={() => "BarcodeDetector" in window ? (setMsg(""), setCam(true)) : setMsg("Camera scanning isn't supported in this browser. Use a Bluetooth/USB scanner or type the barcode.")} className="rounded border bg-white px-3 text-sm">Scan</button></div>
     {cam && <div className="space-y-1"><video ref={vid} className="w-full max-w-sm rounded" muted playsInline /><p className="text-xs text-slate-500">Scanning… hold the barcode steady, about 15–20 cm away, in good light.</p>{msg && <p className="rounded bg-red-50 p-2 text-sm text-red-700">{msg}</p>}<button onClick={() => setCam(false)} className="text-sm text-red-600">Close camera</button></div>}
     {found.length > 0 && <ul className="divide-y rounded border bg-white">{found.map((p) => <li key={p.id}><button onClick={() => add(p)} className="flex w-full justify-between p-2 text-left text-sm"><span>{p.name}</span><span className="text-slate-500">{p.stock} {p.unit} in stock</span></button></li>)}</ul>}
+    {q.trim() && found.length === 0 && <p className="text-sm text-slate-500">No product found for this search.</p>}
     <ul className="divide-y rounded-lg border bg-white">{lines.length ? lines.map((l) => (<li key={l.p.id} className="flex flex-wrap items-center gap-2 p-2 text-sm">
       <span className="mr-auto min-w-[8rem]">{l.p.name}</span>
       <input value={l.qty} inputMode="decimal" onChange={(e) => setLines(lines.map((x) => x.p.id === l.p.id ? { ...x, qty: e.target.value } : x))} className={inp + " w-20"} />

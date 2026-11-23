@@ -7,6 +7,6 @@ export default function Root({ children }: { children: React.ReactNode }) {
   return (<html lang="en"><body>
     <header className="bg-ink px-4 py-3 text-white print:hidden"><nav className="mx-auto flex max-w-5xl items-center gap-5 overflow-x-auto whitespace-nowrap text-sm">
       <b className="mr-auto text-base">KR TRADERS</b>
-      <Link href="/">Dashboard</Link><Link href="/billing">Billing</Link><Link href="/products">Products</Link><Link href="/restock">Restock</Link><Link href="/credit">Credit</Link></nav></header>
+      <Link href="/">Dashboard</Link><Link href="/billing">Billing</Link><Link href="/bills">Bills</Link><Link href="/products">Products</Link><Link href="/restock">Restock</Link><Link href="/credit">Credit</Link></nav></header>
     <main className="mx-auto max-w-5xl p-4">{children}</main></body></html>);
 }

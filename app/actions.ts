@@ -30,7 +30,7 @@ export async function deleteProduct(fd: FormData) { // soft delete: history stay
   revalidatePath("/products"); revalidatePath("/"); redirect("/products");
 }
 
-type Payload = { key: string; method: "cash" | "upi" | "credit"; paid: number; name: string; phone: string; items: { product_id: string; qty: number; unit: string }[] };
+type Payload = { key: string; method: "cash" | "upi" | "credit"; paid: number; name: string; phone: string; edit_id?: string; items: { product_id: string; qty: number; unit: string }[] };
 export async function createBillAction(p: Payload): Promise<{ id?: string; error?: string }> {
   if (!p.key || p.key.length < 16) return { error: "Invalid request" };
   if (!["cash", "upi", "credit"].includes(p.method)) return { error: "Invalid payment method" };
@@ -42,9 +42,10 @@ export async function createBillAction(p: Payload): Promise<{ id?: string; error
     const found = phone ? (await s.from("customers").select("id").eq("phone", phone).maybeSingle()).data : null;
     customer = found?.id ?? (await s.from("customers").insert({ name: p.name.trim(), phone }).select("id").single()).data?.id ?? null;
   }
-  const { data, error } = await s.rpc("create_bill", { p_key: p.key, p_customer: customer, p_items: p.items, p_method: p.method, p_paid: p.paid || 0 });
+  const args = { p_key: p.key, p_customer: customer, p_items: p.items, p_method: p.method, p_paid: p.paid || 0 };
+  const { data, error } = p.edit_id ? await s.rpc("replace_bill", { ...args, p_old: p.edit_id, p_reason: "Edited" }) : await s.rpc("create_bill", args);
   if (error) return { error: error.message };
-  revalidatePath("/"); return { id: (data as { id: string }).id };
+  revalidatePath("/"); revalidatePath("/bills"); revalidatePath("/credit"); revalidatePath("/products"); return { id: (data as { id: string }).id };
 }
 
 export async function findProductByBarcode(code: string) {
@@ -81,4 +82,11 @@ export async function collectPaymentAction(p: { key: string; customer_id: string
   const { error } = await db().rpc("collect_payment", { p_key: p.key, p_customer: p.customer_id, p_amount: p.amount, p_method: p.method });
   if (error) return { error: error.message };
   revalidatePath("/credit"); revalidatePath("/"); return {};
+}
+
+export async function cancelBillAction(p: { id: string; reason: string }): Promise<{ error?: string }> {
+  const { error } = await db().rpc("cancel_bill", { p_bill: p.id, p_reason: p.reason?.trim() || "Cancelled by shop" });
+  if (error) return { error: error.message };
+  for (const path of ["/", "/bills", "/credit", "/products", `/bills/${p.id}`]) revalidatePath(path);
+  return {};
 }
