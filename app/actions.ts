@@ -22,12 +22,12 @@ export async function saveProduct(fd: FormData) {
     if (error) back(error.code === "23505" ? "Barcode already used by another product" : error.message);
     if (stock > 0) await s.from("stock_movements").insert({ product_id: data!.id, delta: stock, reason: "restock", note: "Opening stock" });
   }
-  revalidatePath("/products"); redirect("/products");
+  revalidatePath("/products"); revalidatePath("/"); redirect("/products");
 }
 
 export async function deleteProduct(fd: FormData) { // soft delete: history stays intact
   await db().from("products").update({ is_active: false, barcode: null }).eq("id", String(fd.get("id")));
-  revalidatePath("/products"); redirect("/products");
+  revalidatePath("/products"); revalidatePath("/"); redirect("/products");
 }
 
 type Payload = { key: string; method: "cash" | "upi" | "credit"; paid: number; name: string; phone: string; items: { product_id: string; qty: number; unit: string }[] };
@@ -72,7 +72,7 @@ export async function restockAction(p: { key: string; product_id: string; qty: n
   if (!(p.qty > 0)) return { error: "Quantity must be above 0" };
   const { data, error } = await db().rpc("restock_product", { p_key: p.key, p_product: p.product_id, p_qty: p.qty, p_unit: p.unit, p_note: p.note?.trim() || null });
   if (error) return { error: error.message };
-  revalidatePath("/restock"); revalidatePath("/products"); return { stock: Number((data as { stock: number }).stock) };
+  revalidatePath("/restock"); revalidatePath("/products"); revalidatePath("/"); return { stock: Number((data as { stock: number }).stock) };
 }
 
 export async function collectPaymentAction(p: { key: string; customer_id: string; amount: number; method: "cash" | "upi" }): Promise<{ error?: string }> {
