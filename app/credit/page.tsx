@@ -8,9 +8,10 @@ export default async function Credit() {
     s.from("bills").select("id,bill_no,total,paid,created_at,customer_id,customers(name,phone)").eq("status", "active").eq("method", "credit").order("created_at"),
     s.from("payments").select("amount,method,created_at,bills!inner(bill_no,customer_id,method)").eq("bills.method", "credit").order("created_at", { ascending: false }).limit(300)]);
   if (b.error || pay.error) return <p className="rounded bg-red-50 p-3 text-red-700">{(b.error || pay.error)!.message}</p>;
-  const groups = new Map<string, { id: string; name: string; phone: string | null; due: number; bills: any[] }>();
+  type G = { id: string; name: string; phone: string | null; due: number; bills: any[] };
+  const groups = new Map<string, G>();
   for (const x of b.data as any[]) { const due = Number(x.total) - Number(x.paid); if (due < 0.005) continue;
-    const g = groups.get(x.customer_id) ?? { id: x.customer_id, name: x.customers?.name, phone: x.customers?.phone, due: 0, bills: [] };
+    const g: G = groups.get(x.customer_id) ?? { id: x.customer_id, name: x.customers?.name, phone: x.customers?.phone, due: 0, bills: [] as any[] };
     g.due = Math.round((g.due + due) * 100) / 100; g.bills.push({ ...x, due }); groups.set(x.customer_id, g); }
   const list = [...groups.values()].sort((a, c) => c.due - a.due); const total = list.reduce((a, g) => a + g.due, 0);
   return (<div className="space-y-3"><div className="rounded-lg border bg-white p-3"><div className="text-xs text-slate-500">Total outstanding</div><div className="text-xl font-semibold text-brand">{inr(total)}</div></div>
