@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db, inr } from "@/lib/db";
 import { BASE_UNITS } from "@/lib/units";
 import BarcodeInput from "./BarcodeInput";
@@ -9,6 +10,7 @@ export default async function Products({ searchParams }: { searchParams: { edit?
   const { data, error } = await q; const edit = data?.find((p) => p.id === searchParams.edit);
   const inp = "w-full rounded border p-2 text-sm";
   return (<div className="space-y-4">
+    <Link href="/restock" className="block rounded-xl bg-teal-600 p-3 text-center font-semibold text-white">➕ Restock (receive goods)</Link>
     {(searchParams.error || error) && <p className="rounded bg-red-50 p-3 text-red-700">{searchParams.error || error?.message}</p>}
     <form action={saveProduct} key={edit?.id ?? "new"} className="grid gap-2 rounded-lg border bg-white p-3 sm:grid-cols-6">
       <input type="hidden" name="id" defaultValue={edit?.id} />

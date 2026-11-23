@@ -12,7 +12,6 @@ export default function Billing({ products, edit }: { products: P[]; edit?: Edit
   const [method, setMethod] = useState<"cash" | "upi" | "credit">(edit?.method ?? "cash"); const [paid, setPaid] = useState(edit?.paid ?? "");
   const [name, setName] = useState(edit?.name ?? ""); const [phone, setPhone] = useState(edit?.phone ?? ""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(() => crypto.randomUUID()); const [cam, setCam] = useState(false); const vid = useRef<HTMLVideoElement>(null);
-  useEffect(() => { r.refresh(); }, []); // always load the latest products & stock
   const add = (p: P) => { setLines((ls) => ls.find((l) => l.p.id === p.id) ? ls.map((l) => l.p.id === p.id ? { ...l, qty: String(Number(l.qty) + 1) } : l) : [...ls, { p, qty: "1", unit: p.unit }]); setQ(""); };
   const norm = (c: string) => c.trim().replace(/^0+/, "");
   const byCode = async (c: string) => { let p: P | undefined = products.find((x) => x.barcode && norm(x.barcode) === norm(c)); if (!p) p = (await findProductByBarcode(c)) ?? undefined; if (p) { add(p); setMsg(""); return true; } return false; };
@@ -60,7 +59,7 @@ export default function Billing({ products, edit }: { products: P[]; edit?: Edit
         <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="Customer phone" className={inp} />
         {method === "credit" && <input value={paid} inputMode="decimal" onChange={(e) => setPaid(e.target.value)} placeholder="Paid now ₹ (optional)" className={inp} />}</div></div>
     {msg && !cam && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{msg}</p>}
-    <div className="fixed inset-x-0 bottom-14 z-20 border-t bg-[#0d1426]/95 p-3 backdrop-blur md:bottom-0"><div className="mx-auto flex max-w-5xl items-center gap-3">
+    <div className="fixed inset-x-0 bottom-[80px] z-20 border-t bg-[#0d1426]/95 p-3 backdrop-blur md:bottom-0"><div className="mx-auto flex max-w-5xl items-center gap-3">
       <div className="mr-auto"><div className="text-xs uppercase tracking-wide text-slate-500">{count} item{count === 1 ? "" : "s"} · Total</div><span key={total} className="bump text-3xl font-extrabold text-emerald-400">₹{total.toFixed(2)}</span></div>
       <button disabled={busy || !count} onClick={submit} className="rounded-2xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white shadow-lg disabled:opacity-40">{busy ? "Saving…" : "Complete bill"}</button></div></div>
   </div>);
